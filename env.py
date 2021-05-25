@@ -26,6 +26,13 @@ def add_margin(env):
     env[-1] = 'F'
     return env
 
+def move_player(env, pos_A, new_pos_A):
+    env[pos_A] = '-'
+    if env[new_pos_A] == 'O':
+        env[0,2] = 'A'
+    else: env[new_pos_A] = 'A'
+    return env
+
 def move_vehicles(env):
     n_rows, n_cols = env.shape
     for row in range(1, n_rows-1):
@@ -37,6 +44,10 @@ def move_vehicles(env):
         env[row, pos_vechicle] = '-'
     return env
     
+def is_valid_state(state, n_states):
+    if state < 0 or state >= n_states: return False
+    return True
+
 def transition_matrix(states, actions):
     n_states = len(states)
     n_actions = len(actions)
@@ -45,7 +56,9 @@ def transition_matrix(states, actions):
     for state in states:
         for action in range(n_actions):
             s_linha = state + actions[action]
-            if s_linha < 0 or s_linha >= n_states:
+            if (s_linha < 0 or 
+            s_linha >= n_states or 
+            state == (n_states)-1):
                 s_linha = state
             transition[state, action, s_linha] = 1
     return transition
@@ -53,20 +66,41 @@ def transition_matrix(states, actions):
 def play(env):
     # The game limit is 02:16 min, or 136 seconds
     # Here, every second will be one epoch
-    time_limit = 136
+    time_limit = 10
     actions = np.array([1, 0, -1])
-    rewards = {'O':-1, '-':0, 'F':1}
+    rewards = {'O':-1, '-':0, 'A':0, 'F':1}
     states = np.arange(len(env))
     transition = transition_matrix(states, actions)
+    
+    gamma = 0.9
+    delta = 0 # diferença entre política anterior e atual
+    n_states = len(states)
 
-    print(transition[0,2,0])
+    #initialize v arbitratily e.g. V(s) = 0 for all s in S
+    V = {s: 0 for s in states}
+
+    for s in reversed(states):
+        cur_a = -1
+        cur_max = -1
+        for a in actions:
+            if is_valid_state(s+a, n_states):
+                for s_linha in states:
+                    print("s:", s, 
+                    "| a:", a, 
+                    "| s':", s_linha, 
+                    "| Pr(s'|s, a) =", transition[s,a,s_linha],
+                    "| r(s'):", rewards[env[s_linha, 2]],
+                    "| V(s'):", V[s_linha],
+                    "| V(s) = ", (rewards[env[s_linha, 2]] + gamma*transition[s,a,s_linha]*V[s_linha]))
+            
+    #return V
 
     #for epoch in range(time_limit):
     #    env = move_vehicles(env)
+    #    print(env)    
 
-        
+
 if __name__ == "__main__":
     env = create_env(10,6)
-    play(env)
-
-    
+    print(play(env))
+    print(env)
