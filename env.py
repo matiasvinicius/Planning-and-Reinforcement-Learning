@@ -1,6 +1,8 @@
 import numpy as np
 from random import randint
 
+from numpy.core.numeric import Inf
+
 def create_env(n_rows, n_cols):
     env = np.full((n_rows, n_cols), '-')
     env = add_margin(env)
@@ -44,9 +46,11 @@ def move_vehicles(env):
         env[row, pos_vechicle] = '-'
     return env
     
-def is_valid_state(state, n_states):
-    if state < 0 or state >= n_states: return False
-    return True
+def is_valid_state(state, action, s_linha, n_states):
+    if state+action < 0 or state+action >= n_states: 
+        return False
+    if state+action == s_linha: return True
+    return False
 
 def transition_matrix(states, actions):
     n_states = len(states)
@@ -75,16 +79,21 @@ def play(env):
     gamma = 0.9
     delta = 0 # diferença entre política anterior e atual
     n_states = len(states)
+    epsilon = 0.001
 
     #initialize v arbitratily e.g. V(s) = 0 for all s in S
     V = {s: 0 for s in states}
+    maior = 0
 
-    for s in reversed(states):
+    #while True:
+    for s in reversed(states[1:len(states)-1]):
         cur_a = -1
         cur_max = -1
+        maior = -Inf
+        antigo_v = V[s]
         for a in actions:
-            if is_valid_state(s+a, n_states):
-                for s_linha in states:
+            for s_linha in states:
+                if is_valid_state(s, a, s_linha, n_states):
                     print("s:", s, 
                     "| a:", a, 
                     "| s':", s_linha, 
@@ -92,7 +101,12 @@ def play(env):
                     "| r(s'):", rewards[env[s_linha, 2]],
                     "| V(s'):", V[s_linha],
                     "| V(s) = ", (rewards[env[s_linha, 2]] + gamma*transition[s,a,s_linha]*V[s_linha]))
-            
+                    novo_v = (rewards[env[s_linha, 2]] + gamma*transition[s,a,s_linha]*V[s_linha])
+                    if novo_v > V[s]:
+                        V[s] = novo_v
+                    maior = max(maior, np.abs(antigo_v - V[s]))
+                if maior < epsilon: break
+
     #return V
 
     #for epoch in range(time_limit):
