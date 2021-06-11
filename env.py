@@ -86,32 +86,32 @@ def play(env):
     maior = 0
 
     #while True:
-    for s in reversed(states[1:len(states)-1]):
-        cur_a = -1
-        cur_max = -1
-        maior = -Inf
-        antigo_v = V[s]
-        for a in actions:
-            for s_linha in states:
-                if is_valid_state(s, a, s_linha, n_states):
-                    print("s:", s, 
-                    "| a:", a, 
-                    "| s':", s_linha, 
-                    "| Pr(s'|s, a) =", transition[s,a,s_linha],
-                    "| r(s'):", rewards[env[s_linha, 2]],
-                    "| V(s'):", V[s_linha],
-                    "| V(s) = ", (rewards[env[s_linha, 2]] + gamma*transition[s,a,s_linha]*V[s_linha]))
-                    novo_v = (rewards[env[s_linha, 2]] + gamma*transition[s,a,s_linha]*V[s_linha])
-                    if novo_v > V[s]:
-                        V[s] = novo_v
-                    maior = max(maior, np.abs(antigo_v - V[s]))
-                if maior < epsilon: break
+    # for s in reversed(states[1:len(states)-1]):
+    #     cur_a = -1
+    #     cur_max = -1
+    #     maior = -Inf
+    #     antigo_v = V[s]
+    #     for a in actions:
+    #         for s_linha in states:
+    #             if is_valid_state(s, a, s_linha, n_states):
+    #                 print("s:", s, 
+    #                 "| a:", a, 
+    #                 "| s':", s_linha, 
+    #                 "| Pr(s'|s, a) =", transition[s,a,s_linha],
+    #                 "| r(s'):", rewards[env[s_linha, 2]],
+    #                 "| V(s'):", V[s_linha],
+    #                 "| V(s) = ", (rewards[env[s_linha, 2]] + gamma*transition[s,a,s_linha]*V[s_linha]))
+    #                 novo_v = (rewards[env[s_linha, 2]] + gamma*transition[s,a,s_linha]*V[s_linha])
+    #                 if novo_v > V[s]:
+    #                     V[s] = novo_v
+    #                 maior = max(maior, np.abs(antigo_v - V[s]))
+    #             if maior < epsilon: break
 
     #return V
 
-    #for epoch in range(time_limit):
-    #    env = move_vehicles(env)
-    #    print(env)    
+    for epoch in range(time_limit):
+       env = move_vehicles(env)
+       print(env)    
 
 
 if __name__ == "__main__":
