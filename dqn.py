@@ -36,6 +36,7 @@ def build_agent(model, actions):
 
 if __name__ == "__main__":
     env = gym.make("Freeway-v0")
+    env = gym.wrappers.ResizeObservation(env, (88, 88))
     height, width, channels = env.observation_space.shape
     actions = env.action_space.n
     model = build_model(height, width, channels, actions)
@@ -50,6 +51,7 @@ if __name__ == "__main__":
     print(np.mean(scores.history['episode_reward']))
 
     dqn.save_weights('temp.h5f')
+    dqn.compute_q_values()
 
     # episodes = 2
     # for episode in range(episodes):
