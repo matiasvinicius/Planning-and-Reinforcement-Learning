@@ -148,7 +148,7 @@ Em ambientes reais, contudo, a definição das recompensas deve estar atrelada a
 
 Isso leva à notar que nosso problema terá apenas uma recompensa bem definida à priori, que é chegar ao fim da via expressa (aumentar o score do jogo). Para adquirir essa recompensa, contudo, o agente deve passar por todos os obstáculos e então receber o feedback.
 
-Isso não é tão incomum em jogos do Atari, tanto que os algoritmos PPO e DQN conseguem contornar esses problemas por intermédio da "janela" (buffer) que terão acesso para definir as melhores ações para um problema. O DQN em especial tem algo que salva muitos algoritmos do caso de recompensas esparsas: o fato de ser \textit{off-policy}, logo, ainda que busque a ação que otimize a recompensa em um estado, à uma probabilidade de desvirtuar dessa suposta melhor recompensa e, eventualmente, tornar o processo mais eficiente.
+Isso não é tão incomum em jogos do Atari, tanto que os algoritmos PPO e DQN conseguem contornar esses problemas por intermédio da "janela" (buffer) que terão acesso para definir as melhores ações para um problema. O DQN em especial tem algo que salva muitos algoritmos do caso de recompensas esparsas: o fato de ser \textit{off-policy}, logo, ainda que busque a ação que otimize a recompensa em um estado, há uma probabilidade de desvirtuar dessa suposta melhor recompensa e, eventualmente, tornar o processo mais eficiente.
 
 É importante notar que ainda que para o \textit{Freeway} as recompensas esparsas não sejam problemas muito grandes por haver um bom tratamento delas, em alguns problemas pode ser mais interessante buscar algoritmos que buscam explorar muito o ambiente em busca de informações que possam ser úteis posteriormente, isto é, algoritmos que "dirigidos à curiosidade" (Pathak et al. 2017) , que possivelmente teriam desempenho decente sob o jogo em questão 
 
@@ -167,6 +167,8 @@ Um MDP é uma tupla ...
 
 \subsection{Proximal Policy Optimization}
 
+
+
 \subsection{Deep Q-Learning Network}
 O algoritmo Deep Q-Learning Network foi proposto por uma equipe da DeepMind (Minth et al. 2013) em um artigo que ficou amplamente conhecido na área pela robustez do algoritmo. Com poucas alterações na estrutura descrita pelos autores o algoritmo pode ser adaptado à diferentes problemas e, muitas vezes, com desempenho sobre-humano quando falamos de jogos. Tal como o nome diz, esse algoritmo parte da definição do \textit{Q-Learning}:
 
@@ -184,16 +186,18 @@ A rede neural servirá para estimar o \textit{Q-value} para um estado e ação (
 
 \begin{itemize}
 	\item Uma entrada de frames 84X84X3 (3 canais);
-	\item Uma camada oculta de 32 filtros 8X8 com stride 4 e função de ativação ReLU (convolutional);
-	\item Uma camada oculta de 64 filtros 4X4 com stride 2 e função de ativação ReLU (convolutional);
-	\item Uma camada oculta de 64 filtros 3X3 com stride 1 e função de ativação ReLU (convolutional);
+	\item Uma camada oculta de 32 filtros 8X8 com stride 4 e função de ativação ReLU (convolucional);
+	\item Uma camada oculta de 64 filtros 4X4 com stride 2 e função de ativação ReLU (convolucional);
+	\item Uma camada oculta de 64 filtros 3X3 com stride 1 e função de ativação ReLU (convolucional);
 	\item Uma camada \textit{Flatten} para intermediar as camadas convolucionais e densas
 	\item Uma camada oculta de 512 perceptrons e função de ativação ReLU (densa)
 	\item Uma camada oculta de 256 perceptrons e função de ativação ReLU (densa)
 	\item Uma camada oculta de 3 perceptrons (quantidade de ações) e função de ativação ReLU (densa)
 \end{itemize}
 
-Os resultados podem ser vistos na figura à seguir.
+Para esclarecer, filtro é o "tamanho" da janela em pixels que serão considerados, e \textit{strides} é em quantos pixels a janela será movimentada.
+
+Foram relizados testes para diferentes valores de gamma $\gamma$, \textit{learning rate} $\alpha$, quantidade de épocas (jogos) mediante o número de passos, e tamanho do \textit{buffer}. Dois testes interessantes que sintetizam a ideia por trás do algoritmo aplicado no \textit{Freeway} serão mencionados aqui: ambos mantém o mesmo modelo sequêncial mencionado anteriormente, $\alpha = 0.01$, $\gamma = 1$ incialmente (descrescendo até $\gamma = 0.1$, \textit{buffer} com capacidade para armazenar 10 mil iterações. A diferença entre um teste e outro é dada pela quantidade de passos: o primeiro treinamento foi feito em 100 mil passos (mais de 36 jogos) e o segundo em 1 milhão de passos (mais de 360 jogos). A curva de aprendizado (aumento do \textit{score}) conforme aumenta a quantidade de passos pode ser vista na figura à seguir.
 
 \begin{figure}[h]
      \begin{subfigure}[h]{0.2\textwidth}
@@ -206,10 +210,12 @@ Os resultados podem ser vistos na figura à seguir.
          \includegraphics[width=\textwidth]{1M_dqn_passos}
          \caption{1 milhão de passos}
      \end{subfigure}
-        \caption{Curva de aumento na pontuação para 100 mil passos (a) e 1 milhão de passos (b)}
+        \caption{Aumento na pontuação para 100 mil passos (a) e 1 milhão de passos (b)}
 \end{figure}
 
-\section{Desempenho dos algoritmos}
+Vemos a mesma tendência nas duas curvas. Ambas prezam a exploração do ambiente no início devido o $\gamma$ alto, mas vão aumentando o score após aproximadamente 20\% das iterações. Durante esse treinamento o maior score para 100 mil iterações foi de 21 pontos, e 23 pontos para 1 milhão. Há uma variação maior nos resultados do teste do algoritmo para o modelo de menos iterações. O teste foi realizado em 10 épocas, tendo um score médio de 22.5 para 100 mil iterações (com resultados variando de 20 à 25 pontos) e score médio de 21.1 para 1 milhão de iterações (variando de 21 à 22 pontos). O primeiro modelo teve uma variância maior, mas conseguiu uma pontuação maior na média também, o modelo com mais tempo de treinamento teve uma pontuação menor, mas com menos variância entre os resultados. Quando se avalia a visualização dos modelos, algo que o segundo faz com mais frequência é evitar carros, podendo ser uma influência para ter mais segurança nos passos dados após um longo treinamento. Algo que também influencia a diferença é o tamanho do \textit{buffer}, pois ele equivale à 10\% do total de iterações para 100 mil dados, e 1\% para 1 milhão. Um \textit{buffer} de tamanho 1000 para o primeiro modelo não permitia um aprendizado nas 100 mil iterações, visto que não conseguia alcançar a recompensa em todo o período de treinamento.
+
+\section{Resultados}
 
 
 
