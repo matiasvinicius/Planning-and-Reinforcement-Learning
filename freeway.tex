@@ -154,7 +154,7 @@ Isso não é tão incomum em jogos do Atari, tanto que os algoritmos PPO e DQN c
 
 
 \section{Planejamento Probabilístico}
-O ambiente discretizado mencionado no item anterior é a base para a aplicação dos algoritmos de planejamento. Antes de iniciar esse estudo, note que a pontuação máxima para essa versão do jogo não é 34 pontos, pois temos 10 posições possíveis para o agente e 272 iterações, assim, a máxima pontuação possível será de $\lfloor \frac{272}{10}\rfloor = 27$ pontos. Com isto dito, podemos definir o MDP (\textit{Markov Decision Process}).
+O ambiente discretizado mencionado no item anterior é a base para a aplicação dos algoritmos de planejamento. Antes de iniciar esse estudo, note que a pontuação máxima para essa versão do jogo não é 34 pontos, pois temos 9 posições possíveis para o agente (o estado meta implica em voltar ao início) e 272 iterações, assim, a máxima pontuação possível será de $\lfloor \frac{272}{9}\rfloor = 31$ pontos. Com isto dito, podemos definir o MDP (\textit{Markov Decision Process}).
 
 Um MDP é uma tupla ...
 
