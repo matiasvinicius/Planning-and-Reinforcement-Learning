@@ -118,9 +118,9 @@ Tendo o problema de maximização da pontuação no jogo em mente, este relatór
 Baseado no jogo Freeway, foi desenvolvida a discretização do ambiente por meio de uma matriz para a utilização dos algoritmos de planejamento, assim como foi possível emular o jogo pelo ambiente da Open AI Gym para utilizar os algoritmos de aprendizado por reforço profundo, ainda que com algumas adaptações de pré-processamento para otimizar os modelos.
 
 \subsection{Discretização}
-Para representar o jogo de uma maneira discreta foi desenvolvida uma matriz de 10 linhas e 10 colunas. A primeira linha contém letras $I$ (início) em cada posição, com exceção da posição central, que inicia com o agente representado por $A$. O objetivo é atravessar verticalmente a matriz até a décima linha, chegando à letra $F$ que representa o fim da linha, e consequentemente aumentando o score do jogo. Em cada uma das linhas centrais encontra-se em uma das posições um carro representado pela letra $O$ (obstáculo). As outras posições da matriz são representadas pelo símbolo $-$, demonstrando que estão vazias. 
+Para representar o jogo de uma maneira discreta foi desenvolvida uma matriz de 10 linhas e 10 colunas. A primeira linha contém letras $I$ (início) em cada posição, com exceção da posição central, que inicia com o agente representado por $A$. O objetivo é atravessar verticalmente a matriz até a décima linha, chegando à letra $F$ que representa o fim da linha, e consequentemente aumentando o score do jogo. Em cada uma das linhas centrais encontra-se em uma das posições um carro representado pela letra $O$ (obstáculo), inserido de forma aleatória. As outras posições da matriz são representadas pelo símbolo $-$, demonstrando que estão vazias. 
 
-Como o jogo tem um tempo limite de 136 segundos, o ambiente também terá um tempo delimitado especificado. Para este artigo seguimos que existirão 272 iterações, isto é, para milissegundo o agente poderá tomar uma ação, assim como os carros se moverão para a próxima posição válida na sua linha - da primeira à quarta linha vão para a direita, e da quinta à nona vão para a esquerda. Para o ambiente discreto não foi considerada uma velocidade específica para cada veículo, mas sim uma mesma para todos. A figura 2 exemplifica essa mudança do ambiente para uma próxima iteração.
+Como o jogo tem um tempo limite de 136 segundos, o ambiente também terá um tempo delimitado especificado. Para este artigo seguimos que existirão 272 iterações, isto é, para milissegundo o agente poderá tomar uma ação, assim como os carros se moverão para a próxima posição válida na sua linha - à direita ou na primeira posição à esquerda quando chega ao limite do campo. Para o ambiente discreto não foi considerada uma velocidade específica para cada veículo, mas sim uma mesma para todos. A figura 2 exemplifica essa mudança do ambiente para uma próxima iteração.
 
 
 \begin{figure}[h]
@@ -137,6 +137,7 @@ Como o jogo tem um tempo limite de 136 segundos, o ambiente também terá um tem
         \caption{Matriz que representa o ambiente discreto em um momento $t$ (a) e $t+1$ (b)}
 \end{figure}
 
+A maneira que permite que esse ambiente funcione de forma não dinâmica para a aplicação dos algoritmos serão melhor esclarecidos no subtópico de Planejamento Probabilístico \textit{Value Iteration}
 
 \subsection{Pré-Processamento no Atari}
 A velocidade para execução de algoritmos que têm relação à redes neurais muitas vezes é dependente da entrada recebida. Para otimizar os algoritmos PPO e DQN foi realizada um redimenstionamento nos frames enviados aos jogos. A dimensão de 210px (altura) por 160px (largura) passou para 84X84. Esse redimensionamento influenciou em mais agilidade para realizar os testes, visto que para o DQN (que será visto logo) sem nenhuma adaptação da imagem resultou uma rede neural com mais de 34 milhões de parâmetros possíveis, enquanto a adaptação resultou em cerca de 5 milhões de pesos possíveis. Para este momento do projeto não foram realizadas outras adaptações como na luminância, ajustes para escala de cinza ou junção de dimensões da imagem em um único canal, mencionados no artigo que propos o DQN.
@@ -150,23 +151,105 @@ Isso leva à notar que nosso problema terá apenas uma recompensa bem definida �
 
 Isso não é tão incomum em jogos do Atari, tanto que os algoritmos PPO e DQN conseguem contornar esses problemas por intermédio da "janela" (buffer) que terão acesso para definir as melhores ações para um problema. O DQN em especial tem algo que salva muitos algoritmos do caso de recompensas esparsas: o fato de ser \textit{off-policy}, logo, ainda que busque a ação que otimize a recompensa em um estado, há uma probabilidade de desvirtuar dessa suposta melhor recompensa e, eventualmente, tornar o processo mais eficiente.
 
-É importante notar que ainda que para o \textit{Freeway} as recompensas esparsas não sejam problemas muito grandes por haver um bom tratamento delas, em alguns problemas pode ser mais interessante buscar algoritmos que buscam explorar muito o ambiente em busca de informações que possam ser úteis posteriormente, isto é, algoritmos que "dirigidos à curiosidade" (Pathak et al. 2017) , que possivelmente teriam desempenho decente sob o jogo em questão 
+É importante notar que ainda que para o \textit{Freeway} as recompensas esparsas não sejam problemas muito grandes por haver um bom tratamento delas, em alguns problemas pode ser mais interessante buscar algoritmos que buscam explorar muito o ambiente em busca de informações que possam ser úteis posteriormente, isto é, algoritmos que "dirigidos à curiosidade" (Pathak et al. 2017) , que possivelmente teriam desempenho decente sob o jogo em questão.
 
 
 \section{Planejamento Probabilístico}
-O ambiente discretizado mencionado no item anterior é a base para a aplicação dos algoritmos de planejamento. Antes de iniciar esse estudo, note que a pontuação máxima para essa versão do jogo não é 34 pontos, pois temos 9 posições possíveis para o agente (o estado meta implica em voltar ao início) e 272 iterações, assim, a máxima pontuação possível será de $\lfloor \frac{272}{9}\rfloor = 31$ pontos. Com isto dito, podemos definir o MDP (\textit{Markov Decision Process}).
+O ambiente discretizado mencionado no item anterior é a base para a aplicação dos algoritmos de planejamento, que são úteis para analisar o comportamento do problema em um ambiente controlado. Antes de iniciar esse estudo, note que a pontuação máxima para essa versão do jogo não é 34 pontos, pois temos 9 posições possíveis para o agente (chegar ao estado meta implica em retorn à posição inicial) e 272 iterações, assim, a máxima pontuação possível será de $\lfloor \frac{272}{9}\rfloor = 30$ pontos. Com isto dito, podemos definir o MDP (\textit{Markov Decision Process}). Para este MDP consideramos uma tupla $<S,A,D,T,R>$ (Mausam and Kolobov, 2012), onde: 
 
-Um MDP é uma tupla ...
+\begin{itemize}
 
+\item $s \in S$ são os estados. O agente explora uma sequência de 10 estados e cada um, por sua vez, leva informações coluna adjacente ao agente (de onde vêm os obstáculos). Note que o estado inicial $s_0$ é fixo e há um conjunto de estados metas $G$ (posição final da matriz) em que o agente chega ao fim da via expressa. Havendo então a possibilidade de um agente transitar em 10 estados (não se mantém no estado meta, mas transita para ele), e que cada estado pode ser ocupado por um obstáculo, agente ou espaço nulo com exceção do estado meta (que só pode ser ocupado pela referência de meta) e o estado inicial (que terá ou um agente ou espaço vazio), temos que existem $3^{10} + 1 + 2 = 59052$ composições de estado diferentes;
+
+\item $a \in A$ são as ações, tendo um total de 3 ações possíveis. $A$ é representado como um conjunto $A = \{UP, DOWN, NOOP\}$;
+
+\item $d \in D$ é o tempo (ou época) que ocorre a decisão. Visto que há um limite de tempo para finalizar o jogo igual à 136 segundos (Weiss 2007), $D$ é um conjunto finito (isto é, não poderão ser mapeados estados inifinatamente);
+
+\item $T$ é uma função de transição que mapeia os estado corrente, época e ação em um estado $s_{t+1}$. A transição entre estados segue uma política (que cabe aos algoritmos definirem), mas vale notar que a transição é determinista - não segue uma distribuição de probabilidade para definir qual estado ir;
+
+\item $R$ é uma função de recompensa. Os algoritmos de planejamento entregam uma recompensa positiva igual à 1 para estado meta, -1 para a colisão com os obstáculos, e nula para qualquer outra posição. O estado meta com recompensa +2 foi testado também, mas não trouxe nenhuma grande diferença para várias execuções dos algoritmos (variação de menos de um ponto na pontuação média).
+
+\end{itemize}
+
+Problemas de Horizonte indeterminado englobam o conceito de estados meta, e de fato à um estado que o agente não sabe que deve chegar sem auxílio de um algoritmo. Esse ponto de indeterminação fica muito claro na necessidade de explorar o ambiente na fase de aprendizado por reforço, pois não recebe nenhum retorno positivo até encontrar o que poderia ser definido como meta e aumentar seu \textit{score}. Em planejamento, podemos aproveitar o fato de delimitarmos o limite do processo (estado com recompensa positiva), e executar os algoritmos à partir dele.
+
+Visto que queremos maximar a pontuação e a formulação do jogo, devemos buscar uma política $\pi$ markoviana (decisão depende apenas do estado inicial em planejamento, apesar de poder se aproveitar de um \textit{buffer} com o histórico, como será visto em aprendizado por reforço), estacionária (não há uma relação entre tempo e transição/recompensa) e determinista (sempre será feita a mesma ação para um mesmo estado).
 
 \subsection{Value Iteration}
+A Iteração de Valor é um método usado em planejamento quando busca-se identificar qual estado de todo seu ambiente discreto é o que terá a melhor "recompensa", ou seja, maior valor. O Valor de cada estado é calculado mediante a aplicação do prinicípio de otimilidade de \textit{Bellman}. Independente do estado inicial que se aplica a equação de Bellman, este deverá identificar uma política ótima para o estado em questão. A questão da definição da política ótima é deixada em segundo plano no \textit{Value Iteration}, isto porque, como dito, ele visa retornar o valor de um estado, e não a melhor ação à tomar. A função valor ótima $V^{*}(s, n)$ para um estado $s$ em um passo $n$ de um problema de Horizon Finito é dada por:
+
+$$
+V^{*}(s, n) = \max_{a \in A} \ \{ R(s,a) + \sum_{s' \in S} T(s,a,s')  V(s', n-1)\}
+$$
+
+Essa equação é aplicada no problema de maneira recursiva à partir do estado meta do ambiente discretizado, e vai calculando o valor de todos os estados mediante a recompensa do estado $s'$ e a probabilidade de alcançá-lo com uma das três ações possíveis.
+
+Como a iteração de valor não retorna uma política, é necessária uma adaptação ao método para, ao final, coletarmos a ação que proporcione o maior resultado para as ações possíveis em um estado $s$, ou seja:
+
+$$
+\pi(s, n) = arg \max_{a \in A} \ \{ R(s,a) + \sum_{s' \in S} T(s,a,s')  V(s', n-1)\}
+$$
 
 
-\subsection{Policy iteration}
+A recorrência permite a convergência do algoritmo à política ótima, mas ainda assim ele depende da definição de um ambiente que possa coletar alguma pontuação, caso contrário, pontuará zero. Esse detalhe é importante pois, como mencionado na discretização do ambiente, os obstáculos são postos em posições aleatórias da matriz, e essa composição pode, em muitos casos, gerar um ambiente cujo agente não consiga chegar ao estado meta. O exemplo mais extremo desse caso, mas não restrito somente à ele, é de todos os obstáculos entrarem na mesma coluna, implicando que em algum momento o agente colidirá com um obstáculo, e em uma reação de cadeia levará ele de volta ao início. Como sempre há três ações possíveis para o agente, ele escolherá a melhor para o momento, mas no futuro essa ação ótima poderá sofrer influência da constituição do ambiente e levâ-lo de volta ao início de maneira constante. 
+
+Optamos por manter essa composição no ambiente discreto. A Activision, para evitar esse problema, inicializa, em toda a partida, os agentes na mesma posição e com mesma velocidade (portanto, não será um detalhe relevante para a etapa de aprendizado por reforço).
+
+Outro detalhe de ambientes discretos é que eles não devem dinâmicos. Para criar resultados que facilitem a comparação com algoritmos de aprendizado por reforço, utilizamos cada \textit{frame} (instante t do ambiente desenvolvido) como um ambiente discreto, ou seja, uma representação do jogo que pode ter algoritmos de planejamento probabilístico aplicáveis e, portanto, ter uma ação ótima de um estado para outro. A transição de um \textit{frame} para outro implica em mais uma execução do \textit{Value Iteration}. Ao fim são esperadas $n\_epochs * 272$  cálculos do método de iteração de valor. Cada iteração teve em média 300 equações de \textit{Bellman} executadas. Os resutados de 360 jogos podem ser vistos na figura a seguir.
+
+\begin{figure}[h]
+	\center
+	\includegraphics[width=0.4\textwidth]{value_iteration}
+    \caption{Execuções do Value Iteration. Cada "jogo" é composto por 272 iterações de valor seguidas em um ambiente de 10 estados.}
+\end{figure}
+
+Como explicado neste tópico, o resultado um tanto quanto contra intuitivo de pontuações nulas mostrada na figura tem uma explicação: a aleatoriedade da composição dos ambientes, e a sequência de ações ótima possível não necessariamente resultar em alcançar a meta.
+
+Ainda assim, a maioria das pontuações finais foram de 15 pontos, com a maior densidade nos valores entre 28 e 30 pontos, implicando em uma média de 25.67 pontos. Vale notar que para atingir 30 pontos, os estados de maior valor deveriam sempre estar atrelados à ação de ir para frente, pois essa pontuação só é possível se, durante toda a execução do jogo, for possível ir para frente (após um longo período de treinamento, os algoritmos de aprendizado por reforço apresentam essa mesma tática, de ir sempre que possível à frente, mesmo que colidam com obstáculos e voltem duas casas).
+
+\subsection{Policy Iteration}
+O algoritmo \textit{Value Iteration} retorna o valor ótimo para os estados de uma ambiente discreto (no caso, cada \textit{frame} do "jogo"), mas a política ótima para um estado deve ser computada após essa informação, se seguirmos o algoritmo original proposto. O algoritmo \textit{Policy Iteration} visa suprir essa falta da obtenção da política ótima do \textit{Value Iteration}. Nesse algoritmo não iteramos mais a função valor, mas sim uma política inicial arbitrária.
+
+Esse método de iteração consiste de duas partes essenciais: \textit{improvement} (melhoria) e \textit{evaluation} (avaliação). A fase de melhoria parte de uma política $\pi$ (inicializada arbitrariamente) e aplica um algoritmo adaptado da forma de iteração de valor:
+
+$$
+V^{\pi}(s) = R(s,\pi(s)) + \sum_{s' \in S} T(s,\pi(s),s')  V^{\pi_i}(s')
+$$
+
+Essa equação pode ser vista como o valor de um estado $s$ tomando uma política $\pi$. Note que não usamos mais a ação de maneira pré-definida, mas uma ação proveniente da política que queremos melhorar.
+
+A etapa de avaliação da política, por sua vez, recebe a função valor da política para calcular uma nova política $\pi'$ pela fórmula:
+
+$$
+\pi'(s) = arg \max_{a \in A} \ \{ R(s,a) + \sum_{s' \in S} T(s,a,s')  V^{\pi}(s')\}
+$$
+
+Executando essas iterações de política até a convergência, ou seja, $\pi = \pi'$. Na implementação do algoritmo, a convergência tipicamente demorou à ocorrer, e por isso delimitou-se um valor máximo de 100 iterações, caso não tenha convergido até então.
+
+A aplicação do \textit{Policy Iteration} teve melhores resultados comparados à execução única do \textit{Value Iteration} com a aplicação da ação posteriormente, porém, o tempo de execução do algoritmo também foi maior, sendo a fase de avaliação da política crucial para esses dois pontos.
+
+\begin{figure}[h]
+	\center
+	\includegraphics[width=0.4\textwidth]{policy_iteration}
+    \caption{Execuções do Policy Iteration. Cada "jogo" é composto por 272 iterações de valor seguidas em um ambiente de 10 estados.}
+\end{figure}
 
 \section{Aprendizado por Reforço}
 
 \subsection{Proximal Policy Optimization}
+Problemas de apendizado por reforço profundo tipicamente atribuem à redes neurais a tarefa de atuar como política em um ambiente, sendo seus neurônios de saída a melhor ação à ser tomada pelo que se tem conhecimento até então. Métodos \textit{Policy Gradient} seguem essa abordagem
+
+
+
+Limitar a atualização da política na rede
+update -> novo/velho
+advantage -> quão bom é o estado
+clip -> menor entre epsilon e atualização da rede
+multiplas redes neurais
+minibatch estocástico
+memória -> 20 transições
+probs por softmax
+
 
 
 
@@ -174,7 +257,7 @@ Um MDP é uma tupla ...
 O algoritmo Deep Q-Learning Network foi proposto por uma equipe da DeepMind (Minth et al. 2013) em um artigo que ficou amplamente conhecido na área pela robustez do algoritmo. Com poucas alterações na estrutura descrita pelos autores o algoritmo pode ser adaptado à diferentes problemas e, muitas vezes, com desempenho sobre-humano quando falamos de jogos. Tal como o nome diz, esse algoritmo parte da definição do \textit{Q-Learning}:
 
 $$
-Q(s,a) = r(s,a) + \gamma max_a Q(s',a)
+Q(s,a) = R(s,a) + \gamma \max_{a \in A} Q(s',a)
 $$
 
 Ainda que com certas semelhanças com o \textit{Value Iteration}, o \textit{Q-Learning} segue abordagens diferentes e entra no escopo de aprendizado por reforço, e não planejamento probabilístico. Na equação, $Q(s,a)$ é a soma da recompensa de se chegar em um estado $s$ com a ação $a$ somada ao próximo $Q(s',a)$ para uma ação $a$ que maximiza esse valor, descontada por um valor pré-definido $\gamma$. A recursão causada em $Q(s',a)$ é o que causa a convergência do \textit{Q-Learning}. A semelhança com o \textit{Value Iteration}, portanto, vem da questão da convergência, ou seja, da equação de \textit{Bellman}.
@@ -216,7 +299,8 @@ Foram relizados testes para diferentes valores de gamma $\gamma$, \textit{learni
 
 Vemos a mesma tendência nas duas curvas. Ambas prezam a exploração do ambiente no início devido o $\gamma$ alto, mas vão aumentando o score após aproximadamente 20\% das iterações. Durante esse treinamento o maior score para 100 mil iterações foi de 21 pontos, e 23 pontos para 1 milhão. Há uma variação maior nos resultados do teste do algoritmo para o modelo de menos iterações. O teste foi realizado em 10 épocas, tendo um score médio de 22.5 para 100 mil iterações (com resultados variando de 20 à 25 pontos) e score médio de 21.1 para 1 milhão de iterações (variando de 21 à 22 pontos). O primeiro modelo teve uma variância maior, mas conseguiu uma pontuação maior na média também, o modelo com mais tempo de treinamento teve uma pontuação menor, mas com menos variância entre os resultados. Quando se avalia a visualização dos modelos, algo que o segundo faz com mais frequência é evitar carros, podendo ser uma influência para ter mais segurança nos passos dados após um longo treinamento. Algo que também influencia a diferença é o tamanho do \textit{buffer}, pois ele equivale à 10\% do total de iterações para 100 mil dados, e 1\% para 1 milhão. Um \textit{buffer} de tamanho 1000 para o primeiro modelo não permitia um aprendizado nas 100 mil iterações, visto que não conseguia alcançar a recompensa em todo o período de treinamento.
 
-\section{Resultados}
+
+\section{Comparações entre os algoritmos}
 
 
 
