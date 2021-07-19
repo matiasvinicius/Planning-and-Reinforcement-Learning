@@ -6,6 +6,8 @@ Este repositório contém o projeto sendo desenvolvido para a disciplina [SIN502
 
 * [PDF](./PDF): Proposta, entrega parcial do projeto e o artigo final.
 
+Veja o artigo final [aqui](./PDF/artigo_final.pdf)
+
 Agente no início do treinamento e pouco motivado:
 
 ![](Gifs/out.gif)
